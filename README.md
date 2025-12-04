@@ -272,7 +272,7 @@ Copyright (c) 2025 ImageToPixel.Art
 
 - **Live Tool:** [ImageToPixel.Art](https://imagetopixel.art)
 - **npm Package:** [pixel-art-algorithms](https://www.npmjs.com/package/pixel-art-algorithms)
-- **Issues:** [GitHub Issues](https://github.com/YOUR_USERNAME/pixel-art-algorithms/issues)
+- **Issues:** [GitHub Issues](https://github.com/bo0-bo0/pixel-art-algorithms/issues)
 
 ## 🙏 Acknowledgments
 

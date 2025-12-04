@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Art Algorithms - Basic Example</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .canvas-container {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        .controls {
+            margin: 20px 0;
+            display: grid;
+            gap: 15px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        label {
+            min-width: 150px;
+            font-weight: bold;
+        }
+        input[type="range"] {
+            flex: 1;
+            max-width: 300px;
+        }
+        input[type="file"] {
+            padding: 5px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .value-display {
+            min-width: 40px;
+            text-align: right;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Pixel Art Algorithms - Basic Example</h1>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="imageInput">Select Image:</label>
+                <input type="file" id="imageInput" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label for="colorCount">Color Count:</label>
+                <input type="range" id="colorCount" min="2" max="32" value="8">
+                <span class="value-display" id="colorCountValue">8</span>
+            </div>
+
+            <div class="control-group">
+                <label for="ditherType">Dithering:</label>
+                <select id="ditherType">
+                    <option value="none">None</option>
+                    <option value="bayer" selected>Bayer</option>
+                    <option value="floyd">Floyd-Steinberg</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="ditherStrength">Dither Strength:</label>
+                <input type="range" id="ditherStrength" min="0" max="100" value="100">
+                <span class="value-display" id="ditherStrengthValue">100</span>
+            </div>
+
+            <div class="control-group">
+                <button onclick="processImage()">Process Image</button>
+            </div>
+        </div>
+
+        <div class="canvas-container">
+            <div>
+                <h3>Original</h3>
+                <canvas id="originalCanvas"></canvas>
+            </div>
+            <div>
+                <h3>Processed</h3>
+                <canvas id="processedCanvas"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import {
+            generatePalette,
+            applyPalette,
+            applyBayerDithering,
+            applyFloydSteinbergDithering
+        } from '../src/index.js';
+
+        const imageInput = document.getElementById('imageInput');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const processedCanvas = document.getElementById('processedCanvas');
+        const colorCountSlider = document.getElementById('colorCount');
+        const ditherTypeSelect = document.getElementById('ditherType');
+        const ditherStrengthSlider = document.getElementById('ditherStrength');
+
+        let currentImage = null;
+
+        // Update value displays
+        colorCountSlider.oninput = (e) => {
+            document.getElementById('colorCountValue').textContent = e.target.value;
+        };
+        ditherStrengthSlider.oninput = (e) => {
+            document.getElementById('ditherStrengthValue').textContent = e.target.value;
+        };
+
+        // Load image
+        imageInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    currentImage = img;
+
+                    // Draw original
+                    originalCanvas.width = img.width;
+                    originalCanvas.height = img.height;
+                    const ctx = originalCanvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+
+                    processImage();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.processImage = function() {
+            if (!currentImage) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const originalCtx = originalCanvas.getContext('2d');
+            const processedCtx = processedCanvas.getContext('2d');
+
+            // Set up processed canvas
+            processedCanvas.width = originalCanvas.width;
+            processedCanvas.height = originalCanvas.height;
+
+            // Get image data
+            const imageData = originalCtx.getImageData(
+                0, 0,
+                originalCanvas.width,
+                originalCanvas.height
+            );
+
+            // Generate palette
+            const numColors = parseInt(colorCountSlider.value);
+            const palette = generatePalette(imageData.data, numColors);
+
+            console.log(`Generated ${palette.length}-color palette:`, palette);
+
+            // Apply dithering
+            const ditherType = ditherTypeSelect.value;
+            const ditherStrength = parseInt(ditherStrengthSlider.value);
+
+            let processedData;
+
+            if (ditherType === 'bayer') {
+                processedData = applyBayerDithering(
+                    imageData.data,
+                    originalCanvas.width,
+                    originalCanvas.height,
+                    palette,
+                    ditherStrength
+                );
+            } else if (ditherType === 'floyd') {
+                processedData = applyFloydSteinbergDithering(
+                    imageData.data,
+                    originalCanvas.width,
+                    originalCanvas.height,
+                    palette
+                );
+            } else {
+                processedData = applyPalette(imageData.data, palette);
+            }
+
+            // Display result
+            const resultImageData = new ImageData(
+                processedData,
+                originalCanvas.width,
+                originalCanvas.height
+            );
+            processedCtx.putImageData(resultImageData, 0, 0);
+        };
+
+        // Load a default test image
+        window.addEventListener('load', () => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                currentImage = img;
+                originalCanvas.width = img.width;
+                originalCanvas.height = img.height;
+                const ctx = originalCanvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                processImage();
+            };
+            // Create a simple gradient test image
+            const testCanvas = document.createElement('canvas');
+            testCanvas.width = 200;
+            testCanvas.height = 200;
+            const testCtx = testCanvas.getContext('2d');
+            const gradient = testCtx.createLinearGradient(0, 0, 200, 200);
+            gradient.addColorStop(0, '#ff0000');
+            gradient.addColorStop(0.5, '#00ff00');
+            gradient.addColorStop(1, '#0000ff');
+            testCtx.fillStyle = gradient;
+            testCtx.fillRect(0, 0, 200, 200);
+            img.src = testCanvas.toDataURL();
+        });
+    </script>
+</body>
+</html>
